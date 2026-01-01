@@ -1,7 +1,11 @@
 import prisma from '../database/prisma.js';
-import { User, EmbedBuilder } from 'discord.js';
+import { User, EmbedBuilder, GuildMember, Client } from 'discord.js';
 import { attendanceService } from './attendanceService.js';
 import { translationService } from './translationService.js';
+import { formatEmoji, formatEmojiFromClient, formatEmojiFromGuildByName } from '../utils/emojis.js';
+
+// Server ID for emoji lookup
+const SERVER_ID = '1449180531777339563';
 
 /**
  * User Status Interface
@@ -186,83 +190,92 @@ class StatusService {
    * @param status UserStatus object
    * @param user Discord User object (for display name/avatar)
    * @param guildName Guild name for footer
+   * @param member Optional GuildMember object (for join date)
+   * @param client Optional Discord client (for emoji access)
    * @returns EmbedBuilder ready to send
    * @throws Error if embed creation fails
    */
   public formatStatusEmbed(
     status: UserStatus,
     user: User,
-    guildName: string
+    guildName: string,
+    member?: GuildMember | null,
+    client?: Client | null
   ): EmbedBuilder {
     try {
       const embed = new EmbedBuilder()
-        .setTitle(translationService.t('status.title', { name: user.displayName || user.username }))
-        .setColor(0xff69b4) // Pink to match marriage theme
-        .setThumbnail(user.displayAvatarURL())
+        .setTitle('Thông tin của tôi')
+        .setColor(0x5865f2)
+        .setThumbnail(user.displayAvatarURL({ size: 256 }))
         .setTimestamp()
-        .setFooter({ text: guildName });
-
-      // Marriage Status field
-      if (status.marriage && status.marriage.isMarried) {
-        embed.addFields({
-          name: translationService.t('status.marriageStatus'),
-          value: translationService.t('status.marriedTo', { partnerId: status.marriage.partnerId }),
-          inline: true,
+        .setFooter({ 
+          text: guildName
         });
 
-        // Married Date field
-        if (status.marriage.marriedAt) {
-          const marriedDate = new Date(status.marriage.marriedAt);
-          const formattedDate = this.formatDate(marriedDate);
-          embed.addFields({
-            name: translationService.t('status.marriedDate'),
-            value: formattedDate,
-            inline: true,
-          });
+      let description = '';
+
+      // Helper function to get emoji from server
+      const getServerEmoji = (emojiName: string): string => {
+        if (client) {
+          const emoji = formatEmojiFromGuildByName(client, SERVER_ID, emojiName);
+          // Check if it's a valid emoji (starts with < and ends with >)
+          if (emoji && emoji.startsWith('<') && emoji.endsWith('>')) {
+            return emoji; // Valid emoji found
+          }
         }
+        // Fallback to text representation
+        return `:${emojiName}:`;
+      };
+
+      // Join Date Section (first) - with emoji_61
+      const joinEmoji = getServerEmoji('emoji_61');
+      description += `${joinEmoji}  **Gia nhập LHT:**\n`;
+      if (member?.joinedAt) {
+        const joinDate = this.formatDateShort(member.joinedAt);
+        description += `${joinDate}\n`;
       } else {
-        embed.addFields({
-          name: translationService.t('status.marriageStatus'),
-          value: translationService.t('status.notMarried'),
-          inline: true,
-        });
+        description += 'Không xác định\n';
       }
 
-      // Proposal statistics removed per user request
-
-      // Attendance Statistics field
+      // Attendance Section (second) - try -1 first (as shown in image), then ~1
+      const attendanceEmoji = getServerEmoji('emoji_41-1') || getServerEmoji('emoji_41~1') || getServerEmoji('emoji_41');
+      description += `\n${attendanceEmoji}  **Điểm danh:**\n`;
       if (status.attendance) {
         const daysText = status.attendance.totalDays === 1
           ? `${status.attendance.totalDays} ${translationService.t('status.day')}`
           : `${status.attendance.totalDays} ${translationService.t('status.days')}`;
-        embed.addFields({
-          name: translationService.t('status.totalDaysAttended'),
-          value: daysText,
-          inline: true,
-        });
-
+        
+        description += `• Bang chiến: ${daysText}\n`;
+        
         if (status.attendance.lastAttendanceDate) {
           const lastDate = new Date(status.attendance.lastAttendanceDate);
-          const formattedDate = this.formatDate(lastDate);
-          embed.addFields({
-            name: translationService.t('status.lastAttendance'),
-            value: formattedDate,
-            inline: true,
-          });
+          const formattedDate = this.formatDateShort(lastDate);
+          description += `• Lần đây nhất: ${formattedDate}\n`;
         } else {
-          embed.addFields({
-            name: translationService.t('status.lastAttendance'),
-            value: translationService.t('status.never'),
-            inline: true,
-          });
+          description += `• Lần đây nhất: ${translationService.t('status.never')}\n`;
         }
       } else {
-        embed.addFields({
-          name: translationService.t('status.attendance'),
-          value: translationService.t('status.noAttendanceRecords'),
-          inline: true,
-        });
+        description += `• Bang chiến: 0 ${translationService.t('status.days')}\n`;
+        description += `• Lần đây nhất: ${translationService.t('status.never')}\n`;
       }
+
+      // Marriage Section (last, before cute message) - try -1 first (as shown in image), then ~1
+      if (status.marriage && status.marriage.isMarried) {
+        const partnerMention = `<@${status.marriage.partnerId}>`;
+        const marriageEmoji = getServerEmoji('emoji_48-1') || getServerEmoji('emoji_48~1') || getServerEmoji('emoji_48');
+        if (status.marriage.marriedAt) {
+          const marriedDate = new Date(status.marriage.marriedAt);
+          const formattedDate = this.formatDateShort(marriedDate);
+          description += `\n${marriageEmoji} Kết hôn cùng ${partnerMention} vào ngày ${formattedDate}`;
+        } else {
+          description += `\n${marriageEmoji} Kết hôn cùng ${partnerMention}`;
+        }
+      }
+
+      // Cute message at the end
+      description += '\n\nSoo cute<333';
+
+      embed.setDescription(description);
 
       return embed;
     } catch (error) {
@@ -281,6 +294,22 @@ class StatusService {
     try {
       // Use Vietnamese date formatting from translation service
       return translationService.formatDateVietnamese(date);
+    } catch (error) {
+      return 'N/A';
+    }
+  }
+
+  /**
+   * Format date in DD/MM/YYYY format
+   * @param date Date to format
+   * @returns Formatted date string in DD/MM/YYYY
+   */
+  private formatDateShort(date: Date): string {
+    try {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
     } catch (error) {
       return 'N/A';
     }

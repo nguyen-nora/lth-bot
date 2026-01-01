@@ -49,17 +49,22 @@ export default {
       // Fetch Discord user object for display
       const user = await interaction.client.users.fetch(targetUser.id);
 
+      // Fetch guild member for join date
+      const member = await guild.members.fetch(targetUser.id).catch(() => null);
+
       // Get user status from service
       const status = await statusService.getUserStatus(
         targetUser.id,
         guild.id
       );
 
-      // Format embed
+      // Format embed (pass client for emoji access)
       const embed = statusService.formatStatusEmbed(
         status,
         user,
-        guild.name
+        guild.name,
+        member,
+        interaction.client
       );
 
       // Send response visible to all
