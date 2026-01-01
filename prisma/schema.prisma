@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Marriage {
+  id         Int      @id @default(autoincrement())
+  user1Id    String   @map("user1_id")
+  user2Id    String   @map("user2_id")
+  guildId    String   @map("guild_id")
+  channelId  String   @map("channel_id")
+  marriedAt  DateTime @default(now()) @map("married_at")
+
+  @@unique([user1Id, user2Id, guildId])
+  @@index([user1Id, guildId])
+  @@index([user2Id, guildId])
+  @@map("marriages")
+}
+
+model Proposal {
+  id              Int      @id @default(autoincrement())
+  proposerId      String   @map("proposer_id")
+  proposedId      String   @map("proposed_id")
+  guildId         String   @map("guild_id")
+  channelId       String   @map("channel_id")
+  proposedAccepted Int     @default(0) @map("proposed_accepted")
+  status          String   @default("pending")
+  createdAt       DateTime @default(now()) @map("created_at")
+  buttonExpiresAt DateTime @map("button_expires_at")
+
+  @@index([proposerId, guildId, status])
+  @@index([proposedId, guildId, status])
+  @@index([status, createdAt])
+  @@map("proposals")
+}
+
+model ProposalRateLimit {
+  userId          String   @map("user_id")
+  guildId         String   @map("guild_id")
+  lastProposalAt  DateTime @default(now()) @map("last_proposal_at")
+
+  @@id([userId, guildId])
+  @@map("proposal_rate_limits")
+}
+
+model NotificationChannel {
+  guildId    String   @id @map("guild_id")
+  channelId  String   @map("channel_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("notification_channels")
+}
+
+model Attendance {
+  id         Int      @id @default(autoincrement())
+  userId     String   @map("user_id")
+  guildId    String   @map("guild_id")
+  channelId  String   @map("channel_id")
+  recordedAt DateTime @default(now()) @map("recorded_at")
+  date       String   // YYYY-MM-DD format (UTC)
+
+  @@index([guildId, date])
+  @@index([date])
+  @@index([userId, guildId, date])
+  @@map("attendances")
+}
+
