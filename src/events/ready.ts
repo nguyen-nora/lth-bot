@@ -28,6 +28,35 @@ export default {
 
       console.log('🔄 Registering slash commands...');
 
+      // First, delete all global commands to prevent duplicates
+      // Global commands appear in all servers and can conflict with guild commands
+      try {
+        const globalCommands = await rest.get(
+          Routes.applicationCommands(client.user.id)
+        ) as any[];
+        
+        if (globalCommands && globalCommands.length > 0) {
+          console.log(`🧹 Found ${globalCommands.length} global command(s), deleting...`);
+          
+          // Delete each global command
+          for (const command of globalCommands) {
+            try {
+              await rest.delete(
+                Routes.applicationCommand(client.user.id, command.id)
+              );
+              console.log(`  🗑️  Deleted global command: ${command.name}`);
+            } catch (error) {
+              console.error(`  ⚠️  Failed to delete global command ${command.name}:`, error);
+            }
+          }
+          
+          console.log('✅ Global commands cleaned up');
+        }
+      } catch (error) {
+        // If there are no global commands, this is fine - just log and continue
+        console.log('ℹ️  No global commands to clean up (or error checking):', error instanceof Error ? error.message : error);
+      }
+
       // Check if GUILD_ID is set for single guild, otherwise register to all guilds
       const specificGuildId = getGuildId();
       
