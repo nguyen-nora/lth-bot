@@ -1,6 +1,6 @@
-import { Client, Guild, EmbedBuilder, Collection } from 'discord.js';
+import { Client, EmbedBuilder } from 'discord.js';
 import { Command } from '../utils/loadCommands.js';
-import { permissionService, PermissionTier } from './permissionService.js';
+import { PermissionTier } from './permissionService.js';
 import { translationService } from './translationService.js';
 
 /**
@@ -17,8 +17,8 @@ class HelpService {
    */
   public async generateHelpEmbed(
     client: Client,
-    userId: string,
-    guild: Guild | null
+    _userId: string,
+    _guild: unknown
   ): Promise<EmbedBuilder> {
     const embed = new EmbedBuilder()
       .setTitle(translationService.t('commands.help.title'))

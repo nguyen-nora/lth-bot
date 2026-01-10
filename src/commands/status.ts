@@ -59,7 +59,7 @@ export default {
       );
 
       // Format embed (pass client for emoji access)
-      const embed = statusService.formatStatusEmbed(
+      const { embed, attachment } = await statusService.formatStatusEmbed(
         status,
         user,
         guild.name,
@@ -67,9 +67,10 @@ export default {
         interaction.client
       );
 
-      // Send response visible to all
+      // Send response visible to all (with attachment if exists)
       await interaction.reply({
         embeds: [embed],
+        files: attachment ? [attachment] : [],
         ephemeral: false,
       });
     } catch (error) {

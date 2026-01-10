@@ -15,10 +15,40 @@ model Marriage {
   channelId  String   @map("channel_id")
   marriedAt  DateTime @default(now()) @map("married_at")
 
+  certificate MarriageCertificate?
+
   @@unique([user1Id, user2Id, guildId])
   @@index([user1Id, guildId])
   @@index([user2Id, guildId])
   @@map("marriages")
+}
+
+model MarriageCertificate {
+  id                   Int      @id @default(autoincrement())
+  marriageId           Int      @unique @map("marriage_id")
+  user1Message         String?  @map("user1_message")
+  user2Message         String?  @map("user2_message")
+  certificateImagePath String?  @map("certificate_image_path")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  marriage Marriage @relation(fields: [marriageId], references: [id], onDelete: Cascade)
+
+  @@map("marriage_certificates")
+}
+
+model UserProfile {
+  id                 Int      @id @default(autoincrement())
+  userId             String   @map("user_id")
+  guildId            String   @map("guild_id")
+  relationshipStatus String   @default("single") @map("relationship_status")
+  statusImagePath    String?  @map("status_image_path")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, guildId])
+  @@index([userId, guildId])
+  @@map("user_profiles")
 }
 
 model Proposal {

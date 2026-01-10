@@ -19,6 +19,12 @@ A modern Discord bot built with TypeScript, discord.js v14, and SQLite database 
 
 ## Setup
 
+> **📖 Hướng dẫn chi tiết cho Ubuntu:** Xem [docs/UBUNTU_SETUP.md](docs/UBUNTU_SETUP.md) để có hướng dẫn đầy đủ về cách thiết lập và chạy bot trên Ubuntu, bao gồm cả việc chạy như một systemd service.
+>
+> **🚀 Quick Setup Script cho Ubuntu:** Chạy `bash scripts/ubuntu-setup.sh` để tự động hóa quá trình thiết lập.
+>
+> **☁️ Deploy lên Server từ xa:** Xem [docs/DEPLOY_TO_SERVER.md](docs/DEPLOY_TO_SERVER.md) để deploy bot lên server Ubuntu qua SSH/SFTP. Hoặc sử dụng script tự động: `bash scripts/deploy.sh`
+
 1. **Clone the repository**
    ```bash
    git clone <repository-url>

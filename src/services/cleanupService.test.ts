@@ -37,20 +37,22 @@ describe('CleanupService', () => {
       // Verify first call (declined proposals)
       const firstCall = vi.mocked(prisma.proposal.deleteMany).mock.calls[0]?.[0];
       expect(firstCall).toBeDefined();
-      if (firstCall && 'where' in firstCall) {
-        expect(firstCall.where.status).toBe('declined');
-        if ('createdAt' in firstCall.where && firstCall.where.createdAt && typeof firstCall.where.createdAt === 'object' && 'lt' in firstCall.where.createdAt) {
-          expect(firstCall.where.createdAt.lt).toBeInstanceOf(Date);
+      if (firstCall && 'where' in firstCall && firstCall.where) {
+        const where = firstCall.where as { status?: string; createdAt?: { lt?: Date } };
+        expect(where.status).toBe('declined');
+        if (where.createdAt && typeof where.createdAt === 'object' && 'lt' in where.createdAt) {
+          expect(where.createdAt.lt).toBeInstanceOf(Date);
         }
       }
       
       // Verify second call (expired proposals)
       const secondCall = vi.mocked(prisma.proposal.deleteMany).mock.calls[1]?.[0];
       expect(secondCall).toBeDefined();
-      if (secondCall && 'where' in secondCall) {
-        expect(secondCall.where.status).toBe('expired');
-        if ('createdAt' in secondCall.where && secondCall.where.createdAt && typeof secondCall.where.createdAt === 'object' && 'lt' in secondCall.where.createdAt) {
-          expect(secondCall.where.createdAt.lt).toBeInstanceOf(Date);
+      if (secondCall && 'where' in secondCall && secondCall.where) {
+        const where = secondCall.where as { status?: string; createdAt?: { lt?: Date } };
+        expect(where.status).toBe('expired');
+        if (where.createdAt && typeof where.createdAt === 'object' && 'lt' in where.createdAt) {
+          expect(where.createdAt.lt).toBeInstanceOf(Date);
         }
       }
     });
@@ -108,10 +110,10 @@ describe('CleanupService', () => {
       const firstCall = vi.mocked(prisma.proposal.deleteMany).mock.calls[0]?.[0];
       expect(firstCall).toBeDefined();
       
-      if (firstCall && 'where' in firstCall && 'createdAt' in firstCall.where) {
-        const createdAtFilter = firstCall.where.createdAt;
-        if (createdAtFilter && typeof createdAtFilter === 'object' && 'lt' in createdAtFilter && createdAtFilter.lt instanceof Date) {
-          const sevenDaysAgo = createdAtFilter.lt;
+      if (firstCall && 'where' in firstCall && firstCall.where) {
+        const where = firstCall.where as { createdAt?: { lt?: Date } };
+        if (where.createdAt && typeof where.createdAt === 'object' && 'lt' in where.createdAt && where.createdAt.lt instanceof Date) {
+          const sevenDaysAgo = where.createdAt.lt;
           const expectedDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
           
           // Allow 1 second tolerance for test execution time
@@ -157,12 +159,14 @@ describe('CleanupService', () => {
       
       const call = vi.mocked(prisma.proposal.updateMany).mock.calls[0]?.[0];
       expect(call).toBeDefined();
-      if (call && 'where' in call && 'data' in call) {
-        expect(call.where.status).toBe('pending');
-        if ('buttonExpiresAt' in call.where && call.where.buttonExpiresAt && typeof call.where.buttonExpiresAt === 'object' && 'lt' in call.where.buttonExpiresAt) {
-          expect(call.where.buttonExpiresAt.lt).toBeInstanceOf(Date);
+      if (call && 'where' in call && 'data' in call && call.where && call.data) {
+        const where = call.where as { status?: string; buttonExpiresAt?: { lt?: Date } };
+        const data = call.data as { status?: string };
+        expect(where.status).toBe('pending');
+        if (where.buttonExpiresAt && typeof where.buttonExpiresAt === 'object' && 'lt' in where.buttonExpiresAt) {
+          expect(where.buttonExpiresAt.lt).toBeInstanceOf(Date);
         }
-        expect(call.data.status).toBe('expired');
+        expect(data.status).toBe('expired');
       }
     });
 
@@ -186,10 +190,10 @@ describe('CleanupService', () => {
       const call = vi.mocked(prisma.proposal.updateMany).mock.calls[0]?.[0];
       expect(call).toBeDefined();
       
-      if (call && 'where' in call && 'buttonExpiresAt' in call.where) {
-        const buttonExpiresAtFilter = call.where.buttonExpiresAt;
-        if (buttonExpiresAtFilter && typeof buttonExpiresAtFilter === 'object' && 'lt' in buttonExpiresAtFilter && buttonExpiresAtFilter.lt instanceof Date) {
-          const fifteenMinutesAgo = buttonExpiresAtFilter.lt;
+      if (call && 'where' in call && call.where) {
+        const where = call.where as { buttonExpiresAt?: { lt?: Date } };
+        if (where.buttonExpiresAt && typeof where.buttonExpiresAt === 'object' && 'lt' in where.buttonExpiresAt && where.buttonExpiresAt.lt instanceof Date) {
+          const fifteenMinutesAgo = where.buttonExpiresAt.lt;
           const expectedDate = new Date(Date.now() - 15 * 60 * 1000);
           
           // Allow 1 second tolerance for test execution time
@@ -230,11 +234,12 @@ describe('CleanupService', () => {
 
       const call = vi.mocked(prisma.proposal.updateMany).mock.calls[0]?.[0];
       expect(call).toBeDefined();
-      if (call && 'where' in call) {
-        expect(call.where.status).toBe('pending');
+      if (call && 'where' in call && call.where) {
+        const where = call.where as { status?: string };
+        expect(where.status).toBe('pending');
         // Should not update declined or expired proposals
-        expect(call.where.status).not.toBe('declined');
-        expect(call.where.status).not.toBe('expired');
+        expect(where.status).not.toBe('declined');
+        expect(where.status).not.toBe('expired');
       }
     });
   });

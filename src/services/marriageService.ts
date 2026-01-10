@@ -2,6 +2,7 @@ import prisma from '../database/prisma.js';
 import { rateLimiter } from './rateLimiter.js';
 import { channelManager } from './channelManager.js';
 import { cleanupService } from './cleanupService.js';
+import { imageService } from './imageService.js';
 import {
   Client,
   TextChannel,
@@ -9,6 +10,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  AttachmentBuilder,
 } from 'discord.js';
 import { translationService } from './translationService.js';
 
@@ -37,6 +39,27 @@ export interface Marriage {
   guild_id: string;
   channel_id: string;
   married_at: string;
+}
+
+/**
+ * Marriage Certificate interface
+ */
+export interface MarriageCertificate {
+  id: number;
+  marriageId: number;
+  user1Message: string | null;
+  user2Message: string | null;
+  certificateImagePath: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Marriage duration result
+ */
+export interface MarriageDuration {
+  days: number;
+  formatted: string;
 }
 
 /**
@@ -560,6 +583,257 @@ class MarriageService {
       acceptButton,
       declineButton
     );
+  }
+
+  // ==========================================
+  // Certificate Methods (NEW)
+  // ==========================================
+
+  /**
+   * Get or create certificate for a marriage
+   * @param marriageId Marriage ID
+   * @returns Marriage certificate
+   */
+  public async getCertificate(marriageId: number): Promise<MarriageCertificate> {
+    try {
+      // Try to find existing certificate
+      let certificate = await prisma.marriageCertificate.findUnique({
+        where: { marriageId },
+      });
+
+      // Create if not exists
+      if (!certificate) {
+        certificate = await prisma.marriageCertificate.create({
+          data: { marriageId },
+        });
+      }
+
+      return this.mapCertificateToInterface(certificate);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(
+        translationService.t('errors.failedToGetCertificate', { error: errorMessage })
+      );
+    }
+  }
+
+  /**
+   * Get marriage with certificate data
+   * @param userId User ID
+   * @param guildId Guild ID
+   * @returns Marriage with certificate or null
+   */
+  public async getMarriageWithCertificate(
+    userId: string,
+    guildId: string
+  ): Promise<{ marriage: Marriage; certificate: MarriageCertificate } | null> {
+    const marriage = await prisma.marriage.findFirst({
+      where: {
+        guildId,
+        OR: [{ user1Id: userId }, { user2Id: userId }],
+      },
+      include: {
+        certificate: true,
+      },
+    });
+
+    if (!marriage) {
+      return null;
+    }
+
+    // Get or create certificate
+    const certificate = marriage.certificate
+      ? this.mapCertificateToInterface(marriage.certificate)
+      : await this.getCertificate(marriage.id);
+
+    return {
+      marriage: this.mapMarriageToInterface(marriage),
+      certificate,
+    };
+  }
+
+  /**
+   * Set user message on certificate
+   * @param marriageId Marriage ID
+   * @param userId User ID (must be user1 or user2)
+   * @param message Message to set
+   */
+  public async setUserMessage(
+    marriageId: number,
+    userId: string,
+    message: string
+  ): Promise<void> {
+    // Validate message length
+    const MAX_MESSAGE_LENGTH = 500;
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      throw new Error(
+        translationService.t('errors.messageTooLong', { maxLength: MAX_MESSAGE_LENGTH })
+      );
+    }
+
+    // Get marriage to verify user
+    const marriage = await prisma.marriage.findUnique({
+      where: { id: marriageId },
+    });
+
+    if (!marriage) {
+      throw new Error(translationService.t('errors.marriageNotFound'));
+    }
+
+    // Determine which user field to update
+    let updateField: 'user1Message' | 'user2Message';
+    if (marriage.user1Id === userId) {
+      updateField = 'user1Message';
+    } else if (marriage.user2Id === userId) {
+      updateField = 'user2Message';
+    } else {
+      throw new Error(translationService.t('errors.notAuthorized'));
+    }
+
+    // Ensure certificate exists and update
+    await prisma.marriageCertificate.upsert({
+      where: { marriageId },
+      update: { [updateField]: message },
+      create: {
+        marriageId,
+        [updateField]: message,
+      },
+    });
+  }
+
+  /**
+   * Set certificate image
+   * @param marriageId Marriage ID
+   * @param userId User ID (must be user1 or user2 of the marriage)
+   * @param imagePath Image file path
+   */
+  public async setCertificateImage(
+    marriageId: number,
+    userId: string,
+    imagePath: string | null
+  ): Promise<void> {
+    // Get marriage to verify user authorization
+    const marriage = await prisma.marriage.findUnique({
+      where: { id: marriageId },
+    });
+
+    if (!marriage) {
+      throw new Error(translationService.t('errors.marriageNotFound'));
+    }
+
+    // Verify user is part of this marriage
+    if (marriage.user1Id !== userId && marriage.user2Id !== userId) {
+      throw new Error(translationService.t('errors.notAuthorized'));
+    }
+
+    // Get current certificate to delete old image
+    const currentCert = await prisma.marriageCertificate.findUnique({
+      where: { marriageId },
+    });
+
+    // Delete old image if exists
+    if (currentCert?.certificateImagePath && imagePath !== currentCert.certificateImagePath) {
+      await imageService.deleteFromStorage(currentCert.certificateImagePath);
+    }
+
+    // Upsert certificate with new image
+    await prisma.marriageCertificate.upsert({
+      where: { marriageId },
+      update: { certificateImagePath: imagePath },
+      create: {
+        marriageId,
+        certificateImagePath: imagePath,
+      },
+    });
+  }
+
+  /**
+   * Calculate marriage duration
+   * @param marriedAt Marriage date
+   * @returns Duration in days with formatted string
+   */
+  public calculateMarriageDuration(marriedAt: Date | string): MarriageDuration {
+    const marriageDate = typeof marriedAt === 'string' ? new Date(marriedAt) : marriedAt;
+    const now = new Date();
+    const diffMs = now.getTime() - marriageDate.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    return {
+      days,
+      formatted: `${days} ngày`,
+    };
+  }
+
+  /**
+   * Format certificate as Discord embed
+   * @param marriage Marriage data
+   * @param certificate Certificate data
+   * @param user1Name User 1 display name
+   * @param user2Name User 2 display name
+   * @returns EmbedBuilder and optional attachment
+   */
+  public async formatCertificateEmbed(
+    marriage: Marriage,
+    certificate: MarriageCertificate,
+    user1Name: string,
+    user2Name: string
+  ): Promise<{ embed: EmbedBuilder; attachment: AttachmentBuilder | null }> {
+    const duration = this.calculateMarriageDuration(marriage.married_at);
+    const marriageDate = new Date(marriage.married_at);
+    const formattedDate = `${String(marriageDate.getDate()).padStart(2, '0')}/${String(marriageDate.getMonth() + 1).padStart(2, '0')}/${marriageDate.getFullYear()}`;
+
+    const embed = new EmbedBuilder()
+      .setTitle('💒 Giấy Kết Hôn 💒')
+      .setColor(0xff69b4)
+      .setDescription(
+        `**Ngày kết hôn:** ${formattedDate}\n` +
+        `**Thời gian:** ${duration.formatted}\n\n` +
+        `---\n\n` +
+        `💌 **Lời nhắn từ ${user1Name}:**\n` +
+        `"${certificate.user1Message || 'Chưa có lời nhắn'}"\n\n` +
+        `💌 **Lời nhắn từ ${user2Name}:**\n` +
+        `"${certificate.user2Message || 'Chưa có lời nhắn'}"`
+      )
+      .setFooter({ text: `${user1Name} ❤️ ${user2Name}` })
+      .setTimestamp();
+
+    // Load and attach image if exists
+    let attachment: AttachmentBuilder | null = null;
+    if (certificate.certificateImagePath) {
+      try {
+        const imageBuffer = await imageService.loadFromStorage(certificate.certificateImagePath);
+        attachment = new AttachmentBuilder(imageBuffer, { name: 'certificate.jpg' });
+        embed.setImage('attachment://certificate.jpg');
+      } catch (error) {
+        console.error('Failed to load certificate image:', error);
+        // Continue without image
+      }
+    }
+
+    return { embed, attachment };
+  }
+
+  /**
+   * Map Prisma certificate to interface
+   */
+  private mapCertificateToInterface(certificate: {
+    id: number;
+    marriageId: number;
+    user1Message: string | null;
+    user2Message: string | null;
+    certificateImagePath: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): MarriageCertificate {
+    return {
+      id: certificate.id,
+      marriageId: certificate.marriageId,
+      user1Message: certificate.user1Message,
+      user2Message: certificate.user2Message,
+      certificateImagePath: certificate.certificateImagePath,
+      createdAt: certificate.createdAt,
+      updatedAt: certificate.updatedAt,
+    };
   }
 }
 

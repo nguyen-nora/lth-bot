@@ -1,11 +1,21 @@
 import prisma from '../database/prisma.js';
-import { User, EmbedBuilder, GuildMember, Client } from 'discord.js';
+import { User, EmbedBuilder, GuildMember, Client, AttachmentBuilder } from 'discord.js';
 import { attendanceService } from './attendanceService.js';
 import { translationService } from './translationService.js';
-import { formatEmoji, formatEmojiFromClient, formatEmojiFromGuildByName } from '../utils/emojis.js';
+import { formatEmojiFromGuildByName } from '../utils/emojis.js';
+import { profileService, RelationshipStatus, STATUS_TRANSLATIONS } from './profileService.js';
+import { imageService } from './imageService.js';
 
 // Server ID for emoji lookup
 const SERVER_ID = '1449180531777339563';
+
+// Status emoji mapping
+const STATUS_EMOJIS: Record<RelationshipStatus, string> = {
+  single: '💔',
+  complicated: '🤔',
+  married: '💍',
+  dating: '💕',
+};
 
 /**
  * User Status Interface
@@ -14,6 +24,10 @@ const SERVER_ID = '1449180531777339563';
 export interface UserStatus {
   userId: string;
   guildId: string;
+  profile: {
+    relationshipStatus: RelationshipStatus;
+    statusImagePath: string | null;
+  };
   marriage: {
     isMarried: boolean;
     partnerId: string | null;
@@ -58,6 +72,9 @@ class StatusService {
     guildId: string
   ): Promise<UserStatus> {
     try {
+      // Get user profile (creates if not exists)
+      const profile = await profileService.getProfile(userId, guildId);
+
       // Query marriage data
       const marriage = await prisma.marriage.findFirst({
         where: {
@@ -146,6 +163,10 @@ class StatusService {
       const status: UserStatus = {
         userId,
         guildId,
+        profile: {
+          relationshipStatus: profile.relationshipStatus,
+          statusImagePath: profile.statusImagePath,
+        },
         marriage: marriage
           ? {
               isMarried: true,
@@ -192,16 +213,16 @@ class StatusService {
    * @param guildName Guild name for footer
    * @param member Optional GuildMember object (for join date)
    * @param client Optional Discord client (for emoji access)
-   * @returns EmbedBuilder ready to send
+   * @returns Object with EmbedBuilder and optional attachment
    * @throws Error if embed creation fails
    */
-  public formatStatusEmbed(
+  public async formatStatusEmbed(
     status: UserStatus,
     user: User,
     guildName: string,
     member?: GuildMember | null,
     client?: Client | null
-  ): EmbedBuilder {
+  ): Promise<{ embed: EmbedBuilder; attachment: AttachmentBuilder | null }> {
     try {
       const embed = new EmbedBuilder()
         .setTitle('Thông tin của tôi')
@@ -259,7 +280,13 @@ class StatusService {
         description += `• Lần đây nhất: ${translationService.t('status.never')}\n`;
       }
 
-      // Marriage Section (last, before cute message) - try -1 first (as shown in image), then ~1
+      // Relationship Status Section (NEW)
+      const statusEmoji = STATUS_EMOJIS[status.profile.relationshipStatus];
+      const statusText = STATUS_TRANSLATIONS[status.profile.relationshipStatus];
+      description += `\n${statusEmoji}  **Trạng thái:**\n`;
+      description += `${statusText}\n`;
+
+      // Marriage Section (if married in system)
       if (status.marriage && status.marriage.isMarried) {
         const partnerMention = `<@${status.marriage.partnerId}>`;
         const marriageEmoji = getServerEmoji('emoji_48-1') || getServerEmoji('emoji_48~1') || getServerEmoji('emoji_48');
@@ -277,25 +304,24 @@ class StatusService {
 
       embed.setDescription(description);
 
-      return embed;
+      // Load and attach custom image if exists
+      let attachment: AttachmentBuilder | null = null;
+      if (status.profile.statusImagePath) {
+        try {
+          const imageBuffer = await imageService.loadFromStorage(status.profile.statusImagePath);
+          attachment = new AttachmentBuilder(imageBuffer, { name: 'status.jpg' });
+          embed.setImage('attachment://status.jpg');
+        } catch (error) {
+          console.error('Failed to load status image:', error);
+          // Continue without image
+        }
+      }
+
+      return { embed, attachment };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : translationService.t('common.unknownError');
       throw new Error(translationService.t('errors.failedToFormatEmbed', { error: errorMessage }));
-    }
-  }
-
-  /**
-   * Format date in user-friendly way
-   * @param date Date to format
-   * @returns Formatted date string
-   */
-  private formatDate(date: Date): string {
-    try {
-      // Use Vietnamese date formatting from translation service
-      return translationService.formatDateVietnamese(date);
-    } catch (error) {
-      return 'N/A';
     }
   }
 

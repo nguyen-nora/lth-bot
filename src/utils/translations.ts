@@ -4,7 +4,7 @@
  */
 
 export interface Translations {
-  [key: string]: string | Translations;
+  [key: string]: string | Translations | string[];
 }
 
 /**
@@ -105,6 +105,21 @@ export const translations: Translations = {
     failedToFetchStats: 'Không thể lấy thống kê điểm danh: {error}',
     invalidDateFormat: 'Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD.',
     futureDate: 'Không thể kiểm tra điểm danh cho ngày trong tương lai.',
+    // Profile/Image errors
+    invalidImageFormat: 'Định dạng ảnh không hợp lệ. Vui lòng sử dụng {formats}.',
+    imageTooLarge: 'Ảnh quá lớn. Kích thước tối đa là {maxSize}.',
+    imageProcessingFailed: 'Không thể xử lý ảnh: {error}',
+    imageSaveFailed: 'Không thể lưu ảnh: {error}',
+    imageLoadFailed: 'Không thể tải ảnh: {error}',
+    invalidStatus: 'Trạng thái không hợp lệ. Các giá trị hợp lệ: {validStatuses}',
+    failedToGetProfile: 'Không thể lấy hồ sơ người dùng: {error}',
+    failedToUpdateStatus: 'Không thể cập nhật trạng thái: {error}',
+    failedToUpdateImage: 'Không thể cập nhật ảnh: {error}',
+    failedToDeleteProfile: 'Không thể xóa hồ sơ: {error}',
+    // Certificate errors
+    failedToGetCertificate: 'Không thể lấy giấy kết hôn: {error}',
+    marriageNotFound: 'Không tìm thấy cuộc hôn nhân.',
+    messageTooLong: 'Lời nhắn quá dài. Tối đa {maxLength} ký tự.',
   },
 
   // Marriage-related messages
