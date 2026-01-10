@@ -41,10 +41,13 @@ export default {
     } catch (error) {
       console.error('Error in help command:', error);
       
-      await interaction.reply({
-        content: translationService.t('errors.commandExecutionError'),
-        ephemeral: true,
-      });
+      // Check if already replied before sending error
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: translationService.t('errors.commandExecutionError'),
+          ephemeral: true,
+        });
+      }
     }
   },
 };

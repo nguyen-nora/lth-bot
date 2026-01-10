@@ -280,24 +280,13 @@ class StatusService {
         description += `• Lần đây nhất: ${translationService.t('status.never')}\n`;
       }
 
-      // Relationship Status Section (NEW)
+      // Relationship Status Section
       const statusEmoji = STATUS_EMOJIS[status.profile.relationshipStatus];
       const statusText = STATUS_TRANSLATIONS[status.profile.relationshipStatus];
       description += `\n${statusEmoji}  **Trạng thái:**\n`;
       description += `${statusText}\n`;
 
-      // Marriage Section (if married in system)
-      if (status.marriage && status.marriage.isMarried) {
-        const partnerMention = `<@${status.marriage.partnerId}>`;
-        const marriageEmoji = getServerEmoji('emoji_48-1') || getServerEmoji('emoji_48~1') || getServerEmoji('emoji_48');
-        if (status.marriage.marriedAt) {
-          const marriedDate = new Date(status.marriage.marriedAt);
-          const formattedDate = this.formatDateShort(marriedDate);
-          description += `\n${marriageEmoji} Kết hôn cùng ${partnerMention} vào ngày ${formattedDate}`;
-        } else {
-          description += `\n${marriageEmoji} Kết hôn cùng ${partnerMention}`;
-        }
-      }
+      // Note: Marriage data is now shown via /giaykh command instead
 
       // Cute message at the end
       description += '\n\nSoo cute<333';

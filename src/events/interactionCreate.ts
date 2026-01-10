@@ -154,19 +154,31 @@ async function handleSlashCommand(
       error
     );
 
-    const errorMessage = translationService.t('errors.commandExecutionError');
+    // Only try to respond if the interaction hasn't been handled yet
+    // Commands should handle their own errors, this is a fallback
+    try {
+      const errorMessage = translationService.t('errors.commandExecutionError');
 
-    // Try to reply to the interaction
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({
-        content: errorMessage,
-        ephemeral: true,
-      });
-    } else {
-      await interaction.reply({
-        content: errorMessage,
-        ephemeral: true,
-      });
+      if (interaction.replied) {
+        // Already replied, don't send another message
+        // The command already handled the error
+        return;
+      } else if (interaction.deferred) {
+        // Deferred but not replied - use editReply
+        await interaction.editReply({
+          content: errorMessage,
+        });
+      } else {
+        // Not replied or deferred - use reply
+        await interaction.reply({
+          content: errorMessage,
+          ephemeral: true,
+        });
+      }
+    } catch (replyError) {
+      // Silently ignore reply errors - the interaction may have timed out
+      // or already been handled by the command
+      console.error('Failed to send error response:', replyError);
     }
   }
 }
