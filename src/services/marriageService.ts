@@ -14,6 +14,9 @@ import {
 } from 'discord.js';
 import { translationService } from './translationService.js';
 
+// Note: loveStreakService is imported dynamically to avoid circular dependency
+// Use getLoveStreakForCertificate() method instead of direct import
+
 /**
  * Proposal interface
  */
@@ -349,6 +352,18 @@ class MarriageService {
     }
 
     try {
+      // Check if marriage already exists (prevent duplicate from button spam)
+      const existingMarriage = await this.getMarriage(user1Id, guildId);
+      if (existingMarriage) {
+        return existingMarriage; // Return existing marriage instead of error
+      }
+
+      // Also check if partner is already married
+      const partnerMarriage = await this.getMarriage(user2Id, guildId);
+      if (partnerMarriage) {
+        throw new Error(translationService.t('errors.partnerAlreadyMarried'));
+      }
+
       // Create marriage record
       const createdMarriage = await prisma.marriage.create({
         data: {
@@ -782,6 +797,9 @@ class MarriageService {
     const marriageDate = new Date(marriage.married_at);
     const formattedDate = `${String(marriageDate.getDate()).padStart(2, '0')}/${String(marriageDate.getMonth() + 1).padStart(2, '0')}/${marriageDate.getFullYear()}`;
 
+    // Get love streak for footer
+    const streakText = await this.getLoveStreakText(marriage.id);
+
     const embed = new EmbedBuilder()
       .setTitle('💒 Giấy Kết Hôn 💒')
       .setColor(0xff69b4)
@@ -794,7 +812,7 @@ class MarriageService {
         `💌 **Lời nhắn từ ${user2Name}:**\n` +
         `"${certificate.user2Message || 'Chưa có lời nhắn'}"`
       )
-      .setFooter({ text: `${user1Name} ❤️ ${user2Name}` })
+      .setFooter({ text: `${user1Name} ❤️ ${user2Name} | ${streakText}` })
       .setTimestamp();
 
     // Load and attach image if exists
@@ -811,6 +829,27 @@ class MarriageService {
     }
 
     return { embed, attachment };
+  }
+
+  /**
+   * Get love streak text for certificate footer
+   * @param marriageId Marriage ID
+   * @returns Formatted streak text (e.g., "💕 Streak: 5 ngày" or "💕 Chưa có streak")
+   */
+  private async getLoveStreakText(marriageId: number): Promise<string> {
+    try {
+      // Dynamic import to avoid circular dependency
+      const { loveStreakService } = await import('./loveStreakService.js');
+      const streak = await loveStreakService.getStreak(marriageId);
+      
+      if (streak && streak.currentStreak > 0) {
+        return `💕 Streak: ${streak.currentStreak} ngày`;
+      }
+      return '💕 Chưa có streak';
+    } catch (error) {
+      console.error('Error getting love streak for certificate:', error);
+      return '💕 Chưa có streak';
+    }
   }
 
   /**

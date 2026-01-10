@@ -6,6 +6,8 @@ import { loadCommands } from './utils/loadCommands.js';
 import { marriageService } from './services/marriageService.js';
 import { channelManager } from './services/channelManager.js';
 import { cleanupService } from './services/cleanupService.js';
+import { loveStreakService } from './services/loveStreakService.js';
+import cron from 'node-cron';
 
 // Extend Client to include commands collection
 declare module 'discord.js' {
@@ -45,6 +47,7 @@ async function main() {
   // Set client on services (required for DM sending and channel operations)
   marriageService.setClient(client);
   channelManager.setClient(client);
+  loveStreakService.setClient(client);
 
   // Run cleanup on startup
   try {
@@ -73,6 +76,40 @@ async function main() {
     }
   }, cleanupInterval);
   console.log('✅ Scheduled periodic cleanup (every 24 hours)');
+
+  // ==========================================
+  // Love Streak Cron Jobs
+  // ==========================================
+
+  // Daily reset at 12 AM UTC+7 (17:00 UTC previous day)
+  // Cron: '0 17 * * *' = At 17:00 UTC every day = 00:00 UTC+7
+  cron.schedule('0 17 * * *', async () => {
+    console.log('⏰ [Love Streak] Daily reset starting...');
+    try {
+      const count = await loveStreakService.resetDailyCompletions();
+      console.log(`✅ [Love Streak] Daily reset complete: ${count} streaks reset`);
+    } catch (error) {
+      console.error('❌ [Love Streak] Daily reset failed:', error);
+    }
+  }, {
+    timezone: 'UTC'
+  });
+  console.log('✅ Scheduled love streak daily reset (17:00 UTC = 00:00 UTC+7)');
+
+  // Monthly recovery reset on 1st at 12 AM UTC+7 (17:00 UTC on 1st)
+  // Cron: '0 17 1 * *' = At 17:00 UTC on 1st of month = 00:00 UTC+7 on 1st
+  cron.schedule('0 17 1 * *', async () => {
+    console.log('⏰ [Love Streak] Monthly recovery reset starting...');
+    try {
+      const count = await loveStreakService.resetMonthlyRecoveries();
+      console.log(`✅ [Love Streak] Monthly reset complete: ${count} streaks reset`);
+    } catch (error) {
+      console.error('❌ [Love Streak] Monthly recovery reset failed:', error);
+    }
+  }, {
+    timezone: 'UTC'
+  });
+  console.log('✅ Scheduled love streak monthly reset (17:00 UTC on 1st = 00:00 UTC+7 on 1st)');
 
   // Load commands
   try {

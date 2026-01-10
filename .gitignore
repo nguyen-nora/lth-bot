@@ -13,6 +13,10 @@ data/*.sqlite
 data/*.sqlite-journal
 data/*.sqlite-wal
 data/*.sqlite-shm
+prisma/data/*.sqlite
+prisma/data/*.sqlite-journal
+prisma/data/*.sqlite-wal
+prisma/data/*.sqlite-shm
 
 # Logs
 logs/

@@ -16,6 +16,7 @@ model Marriage {
   marriedAt  DateTime @default(now()) @map("married_at")
 
   certificate MarriageCertificate?
+  loveStreak  LoveStreak?
 
   @@unique([user1Id, user2Id, guildId])
   @@index([user1Id, guildId])
@@ -99,3 +100,35 @@ model Attendance {
   @@map("attendances")
 }
 
+// Love Streak - Daily engagement system for married couples
+// Tracks daily completion status and streak counts
+// Resets at 12 AM UTC+7 (Vietnam timezone)
+model LoveStreak {
+  id                      Int      @id @default(autoincrement())
+  marriageId              Int      @unique @map("marriage_id")
+  
+  // Streak tracking
+  currentStreak           Int      @default(0) @map("current_streak")
+  bestStreak              Int      @default(0) @map("best_streak")
+  totalDays               Int      @default(0) @map("total_days")
+  
+  // Daily completion tracking (reset at 12 AM UTC+7)
+  user1CompletedToday     Boolean  @default(false) @map("user1_completed_today")
+  user2CompletedToday     Boolean  @default(false) @map("user2_completed_today")
+  lastCompletedDate       String?  @map("last_completed_date") // YYYY-MM-DD format (UTC+7)
+  
+  // Recovery tracking (3 per month, resets on 1st)
+  recoveriesUsedThisMonth Int      @default(0) @map("recoveries_used_this_month")
+  lastRecoveryResetDate   String   @default("") @map("last_recovery_reset_date") // YYYY-MM-DD format
+  
+  // Timestamps
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  // Relation to Marriage (cascade delete when marriage is deleted)
+  marriage Marriage @relation(fields: [marriageId], references: [id], onDelete: Cascade)
+
+  @@index([marriageId])
+  @@index([lastCompletedDate])
+  @@map("love_streaks")
+}

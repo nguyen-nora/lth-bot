@@ -92,6 +92,10 @@ export const translations: Translations = {
     'giaykh-image': {
       description: 'Tải lên ảnh tùy chỉnh cho giấy kết hôn',
     },
+    // Love streak command
+    love: {
+      description: 'Duy trì streak tình yêu hàng ngày với đối tác',
+    },
   },
 
   // Error messages
@@ -108,9 +112,10 @@ export const translations: Translations = {
     proposalExpired: 'Lời cầu hôn này đã hết hạn. Vui lòng yêu cầu họ cầu hôn lại.',
     alreadyMarried: 'Bạn đã kết hôn! Sử dụng `/lyhon` trước.',
     userAlreadyMarried: 'Người dùng đó đã kết hôn với người khác.',
+    partnerAlreadyMarried: 'Đối tác đã kết hôn với người khác.',
     proposalExists: 'Đã tồn tại lời cầu hôn giữa bạn và người dùng đó.',
     rateLimit: 'Bạn chỉ có thể cầu hôn một lần mỗi giờ. Vui lòng đợi thêm {minutes} phút trước khi cầu hôn lại.',
-    notMarried: 'Bạn hiện không kết hôn.',
+    notMarried: 'Bạn chưa kết hôn.',
     notCurrentlyMarried: 'Bạn hiện không kết hôn.',
     clientNotSet: 'Discord client chưa được thiết lập.',
     notificationChannelNotFound: 'Không tìm thấy kênh thông báo.',
@@ -189,6 +194,24 @@ export const translations: Translations = {
     daysAgo: '{days} ngày trước',
     today: 'Hôm nay',
     yesterday: 'Hôm qua',
+  },
+
+  // Love streak messages
+  love: {
+    // Success messages
+    firstCompleted: 'Đã hoàn thành! Đang chờ đối tác của bạn...',
+    bothCompleted: '✅ Streak duy trì thành công! Streak của bạn là {streak} ngày. Hẹn gặp lại sau 12 giờ!',
+    alreadyCompleted: 'Bạn đã hoàn thành streak hôm nay rồi! Đang chờ đối tác của bạn.',
+    
+    // Recovery messages
+    streakRecovered: '🔄 Streak đã được khôi phục! Còn {remaining} lần khôi phục. Hãy cẩn thận với streak của bạn nhé!',
+    streakRecoveredLastChance: '⚠️ Streak đã được khôi phục! Đây là lần khôi phục cuối cùng trong tháng này. Hãy cẩn thận!',
+    
+    // Failure messages
+    streakLost: '💔 Cả hai đã thất bại streak. Streak đã được đặt lại về 0.',
+    
+    // Error messages
+    notMarriedHint: '❌ Bạn chưa kết hôn. Sử dụng `/kethon @user` để cầu hôn!',
   },
 
   // Date formatting

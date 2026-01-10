@@ -286,6 +286,17 @@ class StatusService {
       description += `\n${statusEmoji}  **Trạng thái:**\n`;
       description += `${statusText}\n`;
 
+      // Love Streak Section (if married)
+      if (status.marriage?.isMarried) {
+        const streakInfo = await this.getLoveStreakInfo(status.userId, status.guildId);
+        if (streakInfo) {
+          description += `\n💕  **Love Streak:**\n`;
+          description += `• Hiện tại: ${streakInfo.currentStreak} ngày\n`;
+          description += `• Tốt nhất: ${streakInfo.bestStreak} ngày\n`;
+          description += `• Tổng cộng: ${streakInfo.totalDays} ngày\n`;
+        }
+      }
+
       // Note: Marriage data is now shown via /giaykh command instead
 
       // Cute message at the end
@@ -311,6 +322,35 @@ class StatusService {
       const errorMessage =
         error instanceof Error ? error.message : translationService.t('common.unknownError');
       throw new Error(translationService.t('errors.failedToFormatEmbed', { error: errorMessage }));
+    }
+  }
+
+  /**
+   * Get love streak info for a user
+   * @param userId User ID
+   * @param guildId Guild ID
+   * @returns Streak info or null
+   */
+  private async getLoveStreakInfo(
+    userId: string,
+    guildId: string
+  ): Promise<{ currentStreak: number; bestStreak: number; totalDays: number } | null> {
+    try {
+      // Dynamic import to avoid circular dependency
+      const { loveStreakService } = await import('./loveStreakService.js');
+      const streak = await loveStreakService.getStreakByUserId(userId, guildId);
+      
+      if (streak) {
+        return {
+          currentStreak: streak.currentStreak,
+          bestStreak: streak.bestStreak,
+          totalDays: streak.totalDays,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting love streak for status:', error);
+      return null;
     }
   }
 

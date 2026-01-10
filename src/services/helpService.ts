@@ -6,7 +6,7 @@ import { translationService } from './translationService.js';
  * Command categories for organized help display
  */
 const COMMAND_CATEGORIES: Record<string, string[]> = {
-  '💍 Hôn nhân': ['kethon', 'lyhon', 'giaykh', 'giaykh-message', 'giaykh-image'],
+  '💍 Hôn nhân': ['kethon', 'lyhon', 'giaykh', 'giaykh-message', 'giaykh-image', 'love'],
   '👤 Hồ sơ': ['status', 'status-set', 'status-image'],
   '📋 Điểm danh (Admin)': ['diemdanh', 'checkdd'],
   '🔧 Tiện ích': ['help', 'ping'],
