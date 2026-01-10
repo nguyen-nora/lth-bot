@@ -75,6 +75,23 @@ export const translations: Translations = {
       availableToAll: 'Có sẵn cho tất cả người dùng',
       footer: 'Sử dụng /help để xem lại danh sách này',
     },
+    // New status/profile commands
+    'status-set': {
+      description: 'Đặt trạng thái tình cảm của bạn',
+    },
+    'status-image': {
+      description: 'Tải lên ảnh tùy chỉnh cho hồ sơ của bạn',
+    },
+    // Marriage certificate commands
+    giaykh: {
+      description: 'Xem giấy kết hôn',
+    },
+    'giaykh-message': {
+      description: 'Đặt lời nhắn cá nhân trên giấy kết hôn',
+    },
+    'giaykh-image': {
+      description: 'Tải lên ảnh tùy chỉnh cho giấy kết hôn',
+    },
   },
 
   // Error messages

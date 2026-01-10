@@ -1,7 +1,16 @@
 import { Client, EmbedBuilder } from 'discord.js';
 import { Command } from '../utils/loadCommands.js';
-import { PermissionTier } from './permissionService.js';
 import { translationService } from './translationService.js';
+
+/**
+ * Command categories for organized help display
+ */
+const COMMAND_CATEGORIES: Record<string, string[]> = {
+  '💍 Hôn nhân': ['kethon', 'lyhon', 'giaykh', 'giaykh-message', 'giaykh-image'],
+  '👤 Hồ sơ': ['status', 'status-set', 'status-image'],
+  '📋 Điểm danh (Admin)': ['diemdanh', 'checkdd'],
+  '🔧 Tiện ích': ['help', 'ping'],
+};
 
 /**
  * Help Service
@@ -28,52 +37,48 @@ class HelpService {
 
     // Get all commands
     const commands = client.commands;
-
-    // Separate commands by permission tier
-    const adminCommands: Command[] = [];
-    const userCommands: Command[] = [];
-
+    const commandMap = new Map<string, Command>();
+    
     for (const [name, command] of commands) {
-      // Determine permission tier (default to USER)
-      const requiredTier = this.getCommandTier(name);
+      commandMap.set(name, command);
+    }
+
+    // Add commands by category
+    for (const [categoryName, categoryCommands] of Object.entries(COMMAND_CATEGORIES)) {
+      const commandList: string[] = [];
       
-      if (requiredTier === PermissionTier.ADMIN) {
-        adminCommands.push(command);
-      } else {
-        userCommands.push(command);
+      for (const cmdName of categoryCommands) {
+        const command = commandMap.get(cmdName);
+        if (command) {
+          const description = translationService.t(`commands.${cmdName}.description`) || command.data.description;
+          commandList.push(`\`/${cmdName}\` - ${description}`);
+        }
+      }
+      
+      if (commandList.length > 0) {
+        embed.addFields({
+          name: categoryName,
+          value: commandList.join('\n'),
+          inline: false,
+        });
       }
     }
 
-    // Add admin commands section
-    if (adminCommands.length > 0) {
-      const adminList = adminCommands
-        .map((cmd) => {
-          const cmdName = cmd.data.name;
-          const description = translationService.t(`commands.${cmdName}.description`) || cmd.data.description;
-          return `\`/${cmdName}\` - ${description}`;
-        })
-        .join('\n');
-
-      embed.addFields({
-        name: `${translationService.t('commands.help.adminCommands')} ${translationService.t('commands.help.permissionRequired')}`,
-        value: adminList,
-        inline: false,
-      });
+    // Add any uncategorized commands
+    const categorizedCommands = new Set(Object.values(COMMAND_CATEGORIES).flat());
+    const uncategorizedList: string[] = [];
+    
+    for (const [name, command] of commands) {
+      if (!categorizedCommands.has(name)) {
+        const description = translationService.t(`commands.${name}.description`) || command.data.description;
+        uncategorizedList.push(`\`/${name}\` - ${description}`);
+      }
     }
-
-    // Add user commands section
-    if (userCommands.length > 0) {
-      const userList = userCommands
-        .map((cmd) => {
-          const cmdName = cmd.data.name;
-          const description = translationService.t(`commands.${cmdName}.description`) || cmd.data.description;
-          return `\`/${cmdName}\` - ${description}`;
-        })
-        .join('\n');
-
+    
+    if (uncategorizedList.length > 0) {
       embed.addFields({
-        name: `${translationService.t('commands.help.userCommands')} ${translationService.t('commands.help.availableToAll')}`,
-        value: userList,
+        name: '📦 Khác',
+        value: uncategorizedList.join('\n'),
         inline: false,
       });
     }
@@ -83,23 +88,6 @@ class HelpService {
     });
 
     return embed;
-  }
-
-  /**
-   * Get permission tier for a command
-   * This should match the COMMAND_PERMISSIONS mapping in interactionCreate.ts
-   * @param commandName Command name
-   * @returns Permission tier required
-   */
-  private getCommandTier(commandName: string): PermissionTier {
-    // Match the permission mapping from interactionCreate.ts
-    const adminCommands = ['diemdanh', 'checkdd', 'ping'];
-    
-    if (adminCommands.includes(commandName)) {
-      return PermissionTier.ADMIN;
-    }
-    
-    return PermissionTier.USER;
   }
 }
 
