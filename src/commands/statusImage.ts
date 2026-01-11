@@ -40,11 +40,11 @@ export default {
       // Validate image
       imageService.validateImage(attachment);
 
-      // Process image (download, crop to 480x480)
+      // Process image (download, cropping temporarily disabled)
       const processedBuffer = await imageService.processImage(attachment);
 
-      // Save to storage
-      const imagePath = await imageService.saveToStorage(processedBuffer, 'status');
+      // Save to storage (preserve original extension)
+      const imagePath = await imageService.saveToStorage(processedBuffer, 'status', attachment.name);
 
       // Update profile with new image path
       await profileService.setStatusImage(interaction.user.id, guild.id, imagePath);

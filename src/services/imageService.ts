@@ -101,9 +101,9 @@ class ImageService {
 
   /**
    * Process an image attachment
-   * Downloads, validates, and crops the image
+   * Downloads and validates the image (cropping temporarily disabled)
    * @param attachment Discord attachment
-   * @returns Processed image buffer
+   * @returns Image buffer (original, not cropped)
    */
   public async processImage(attachment: Attachment): Promise<Buffer> {
     // Validate first
@@ -119,10 +119,12 @@ class ImageService {
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Process with Sharp
-      const processed = await this.cropToSquare(buffer);
+      // TODO: Cropping temporarily disabled to allow free image display
+      // Uncomment to re-enable cropping:
+      // const processed = await this.cropToSquare(buffer);
+      // return processed;
 
-      return processed;
+      return buffer;
     } catch (error) {
       if (error instanceof Error && error.message.includes('errors.')) {
         throw error; // Re-throw translated errors
@@ -138,14 +140,20 @@ class ImageService {
    * Save image buffer to local storage
    * @param buffer Image buffer
    * @param subdirectory Subdirectory (e.g., 'status', 'certificates')
+   * @param originalFilename Optional original filename to preserve extension
    * @returns File path relative to storage root
    */
-  public async saveToStorage(buffer: Buffer, subdirectory: 'status' | 'certificates'): Promise<string> {
+  public async saveToStorage(
+    buffer: Buffer,
+    subdirectory: 'status' | 'certificates',
+    originalFilename?: string
+  ): Promise<string> {
     try {
-      // Generate unique filename
+      // Generate unique filename, preserving original extension if available
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 8);
-      const filename = `${timestamp}-${random}.jpg`;
+      const ext = originalFilename ? path.extname(originalFilename) || '.jpg' : '.jpg';
+      const filename = `${timestamp}-${random}${ext}`;
 
       // Build full path
       const dirPath = path.join(IMAGE_CONFIG.STORAGE_PATH, subdirectory);

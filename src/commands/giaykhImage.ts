@@ -50,11 +50,11 @@ export default {
       // Validate image
       imageService.validateImage(attachment);
 
-      // Process image (download, crop to 480x480)
+      // Process image (download, cropping temporarily disabled)
       const processedBuffer = await imageService.processImage(attachment);
 
-      // Save to storage
-      const imagePath = await imageService.saveToStorage(processedBuffer, 'certificates');
+      // Save to storage (preserve original extension)
+      const imagePath = await imageService.saveToStorage(processedBuffer, 'certificates', attachment.name);
 
       // Update certificate with new image path (pass userId for authorization)
       await marriageService.setCertificateImage(marriage.id, interaction.user.id, imagePath);
